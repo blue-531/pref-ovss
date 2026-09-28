@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Preference-Guided Adaptation for Open-Vocabulary Semantic Segmentation via Prompt Disagreement</title>
+<meta name="description" content="Preference-Guided Adaptation for Open-Vocabulary Semantic Segmentation via Prompt Disagreement (NeurIPS 2026). Adapt OVSS models to specialized domains from binary A/B preferences instead of pixel masks.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f4f7fb;
+    --bg-hero-a: #f6f9fe;
+    --bg-hero-b: #ffffff;
+    --card: #ffffff;
+    --ink: #0a1317;
+    --text: #1c1e21;
+    --text-2: #444950;
+    --muted: #5d6c7b;
+    --line: #dee3e9;
+    --line-strong: #ced0d4;
+    --accent: #0064e0;
+    --accent-ink: #ffffff;
+    --accent-soft: #e8f1fd;
+    --btn: #0a1317;
+    --btn-ink: #ffffff;
+    --shadow: 0 1px 2px rgba(10, 19, 23, 0.04), 0 10px 30px rgba(10, 19, 23, 0.06);
+    --ok: #31a24c;
+    --bad: #e41e3f;
+    /* domain tints (same hues as the masks in the video) */
+    --d-med: #00a6c2;
+    --d-earth: #c98500;
+    --d-eng: #e0306d;
+    --d-bio: #2a8f5a;
+    /* chart series, validated (dataviz validate_palette.js) */
+    --bar-zs: #e0a34c;
+    --bar-ours: #0064e0;
+    --bar-sup: #1baf7a;
+    --ln-1: #2a78d6;
+    --ln-2: #eb6834;
+    --ln-3: #1baf7a;
+    --ln-4: #eda100;
+    --ln-5: #e87ba4;
+    --ln-mean: #0a1317;
+    --grid: #e7ebf0;
+    --code-bg: #f4f7fb;
+    --radius: 20px;
+    --page: 1480px;
+    --display: "Montserrat", "Helvetica Neue", Arial, sans-serif;
+    --sans: "Inter", "Helvetica Neue", Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0c1217; --bg-soft: #10181e; --bg-hero-a: #0f1820; --bg-hero-b: #0c1217;
+      --card: #151f27; --ink: #eef2f6; --text: #dfe5eb; --text-2: #bcc6d0; --muted: #93a1af;
+      --line: #25323d; --line-strong: #33424f; --accent: #3d8bff; --accent-ink: #06121f;
+      --accent-soft: #13253b; --btn: #eef2f6; --btn-ink: #0c1217;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.25);
+      --ok: #4cc26a; --bad: #ff5a70;
+      --d-med: #2cc6e0; --d-earth: #e0a032; --d-eng: #ff5c93; --d-bio: #4cc486;
+      --bar-zs: #c98500; --bar-ours: #3d8bff; --bar-sup: #199e70;
+      --ln-1: #3987e5; --ln-2: #d95926; --ln-3: #199e70; --ln-4: #c98500; --ln-5: #d55181;
+      --ln-mean: #eef2f6; --grid: #22303a; --code-bg: #10181e;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c1217; --bg-soft: #10181e; --bg-hero-a: #0f1820; --bg-hero-b: #0c1217;
+    --card: #151f27; --ink: #eef2f6; --text: #dfe5eb; --text-2: #bcc6d0; --muted: #93a1af;
+    --line: #25323d; --line-strong: #33424f; --accent: #3d8bff; --accent-ink: #06121f;
+    --accent-soft: #13253b; --btn: #eef2f6; --btn-ink: #0c1217;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.25);
+    --ok: #4cc26a; --bad: #ff5a70;
+    --d-med: #2cc6e0; --d-earth: #e0a032; --d-eng: #ff5c93; --d-bio: #4cc486;
+    --bar-zs: #c98500; --bar-ours: #3d8bff; --bar-sup: #199e70;
+    --ln-1: #3987e5; --ln-2: #d95926; --ln-3: #199e70; --ln-4: #c98500; --ln-5: #d55181;
+    --ln-mean: #eef2f6; --grid: #22303a; --code-bg: #10181e;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  img, video { max-width: 100%; height: auto; display: block; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+  strong { color: var(--ink); font-weight: 600; }
+
+  .wrap { max-width: var(--page); margin: 0 auto; padding-inline: clamp(20px, 3vw, 48px); }
+  .section { padding-block: 52px; }
+  .section.soft { background: var(--bg-soft); }
+  .section-head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; margin-bottom: 26px; }
+  .section-head.left { align-items: flex-start; text-align: left; }
+  .section-head.left .intro { max-width: 1100px; }
+  .split { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 28px; align-items: start; }
+  .split.center { align-items: center; }
+  .pill {
+    display: inline-block; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--accent); background: var(--accent-soft); padding: 6px 14px; border-radius: 999px;
+  }
+  h1, h2, h3 { font-family: var(--display); color: var(--ink); font-weight: 500; text-wrap: balance; margin: 0; }
+  h2 { font-size: clamp(28px, 3.4vw, 38px); line-height: 1.2; letter-spacing: -0.01em; }
+  h3 { font-size: 21px; line-height: 1.3; }
+  .intro { max-width: 760px; color: var(--text-2); margin: 0; }
+
+  /* hero */
+  .hero {
+    background:
+      radial-gradient(900px 420px at 50% -120px, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%),
+      linear-gradient(180deg, var(--bg-hero-a), var(--bg-hero-b));
+    padding-block: 64px 56px;
+    text-align: center;
+  }
+  .venue {
+    display: inline-block; font-family: var(--sans); font-weight: 700; font-size: 15px; letter-spacing: 0.06em;
+    color: var(--btn-ink); background: var(--btn); padding: 8px 18px; border-radius: 999px; margin-bottom: 20px;
+  }
+  .title {
+    font-size: clamp(28px, 3.1vw, 46px); line-height: 1.15; letter-spacing: -0.015em; max-width: 1340px; margin: 0 auto;
+  }
+  .title .hl { color: var(--accent); }
+  .authors { margin: 20px auto 0; color: var(--text-2); font-size: 18px; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; }
+  .authors a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 4px; }
+  .authors a:hover { text-decoration-color: var(--accent); color: var(--accent); }
+  .affil { color: var(--muted); font-size: 15px; margin-top: 6px; }
+  .links { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 22px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 9px; padding: 11px 22px; border-radius: 999px;
+    font-weight: 600; font-size: 16px; text-decoration: none; background: var(--btn); color: var(--btn-ink);
+    border: 2px solid var(--btn); transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line-strong); }
+  .btn.disabled { opacity: 0.45; cursor: default; }
+  .btn.disabled:hover { transform: none; box-shadow: none; }
+  .btn small { font-size: 13px; font-weight: 500; }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(10, 19, 23, 0.14); }
+  .btn svg { width: 18px; height: 18px; flex: none; }
+  .tldr { max-width: 780px; margin: 30px auto 0; font-size: 19px; color: var(--text-2); }
+  .domains { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 18px; }
+  .dchip {
+    display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: var(--ink);
+    background: var(--card); border: 1px solid var(--line); padding: 6px 14px 6px 10px; border-radius: 999px;
+  }
+  .dchip i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+  /* highlights */
+  .hl-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .hl-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 20px; display: flex; flex-direction: column; gap: 6px; }
+  .hl-top { font-size: 13px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+  .hl-card h3 { font-size: 20px; }
+  .hl-card p { margin: 0; color: var(--text-2); font-size: 15.5px; line-height: 1.6; }
+  .hl-big { font-family: var(--display); font-size: 40px; font-weight: 500; color: var(--accent); line-height: 1.1; }
+
+  .abstract { color: var(--text-2); font-size: 17px; }
+  .abstract h2 { margin-bottom: 14px; }
+  .abstract p { margin: 0; }
+
+  /* prompt disagreement grid: rows = domains, columns = templates (+ entropy) */
+  .pd-scroll { overflow-x: auto; padding-bottom: 4px; }
+  .pd-grid { display: grid; grid-template-columns: 160px repeat(5, minmax(100px, 140px)); gap: 10px 12px; min-width: 640px; align-items: start; justify-content: center; }
+  .pd-colhead { font-size: 13px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); padding: 0 2px; }
+  .pd-row { display: flex; flex-direction: column; justify-content: center; gap: 4px; align-self: stretch; padding-bottom: 26px; }
+  .pd-row b { font-family: var(--display); font-weight: 500; font-size: 18px; color: var(--ink); line-height: 1.25; }
+  .pd-row span { font-size: 14px; color: var(--text-2); }
+  .pd-cell { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  .pd-img { position: relative; aspect-ratio: 1 / 1; border-radius: 12px; overflow: hidden; background: #000; }
+  .pd-img img { width: 100%; height: 100%; object-fit: cover; }
+  .pd-img.cand { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .pd-badge { position: absolute; top: 8px; left: 8px; background: var(--accent); color: #fff; font-weight: 700; font-size: 12.5px; padding: 3px 9px; border-radius: 999px; }
+  .pd-cap { font-family: var(--mono); font-size: 11.5px; line-height: 1.4; color: var(--ink); min-height: 2.8em; }
+
+  /* method */
+  .figure { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .figure img { width: 100%; border-radius: 10px; background: #fff; }
+  .figcap { color: var(--muted); font-size: 15px; margin: 12px 4px 0; text-align: center; }
+  .steps { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin: 0; list-style: none; padding: 0; counter-reset: step; }
+  .steps li { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px 16px 62px; counter-increment: step; position: relative; }
+  .steps li::before { position: absolute; left: 18px; top: 16px; }
+  .steps li::before {
+    content: counter(step); display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+    background: var(--ink); color: var(--bg); font-weight: 700; font-size: 15px;
+  }
+  .steps h3 { font-size: 18px; margin-bottom: 6px; }
+  .steps p { margin: 0; color: var(--text-2); font-size: 15.5px; }
+
+  /* domain loop clip */
+  .loop-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr); gap: 32px; align-items: center; }
+  .loop-video { width: 100%; aspect-ratio: 1280 / 568; border-radius: var(--radius); border: 1px solid var(--line); background: var(--card); }
+
+  /* charts */
+  .tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 18px; }
+  .tab {
+    font: inherit; font-size: 15px; font-weight: 600; padding: 8px 16px; border-radius: 999px; cursor: pointer;
+    background: var(--card); color: var(--text); border: 1px solid var(--line-strong);
+  }
+  .tab[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .chart-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px 22px 14px; }
+  .chart-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 8px; }
+  .chart-head h3 { font-size: 19px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14.5px; color: var(--text-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .legend i.line { height: 3px; width: 16px; border-radius: 2px; }
+  .chart { position: relative; width: 100%; }
+  .chart svg { display: block; width: 100%; overflow: visible; }
+  .chart text { font-family: var(--sans); }
+  .tip {
+    position: absolute; pointer-events: none; background: var(--card); color: var(--text); border: 1px solid var(--line-strong);
+    border-radius: 10px; padding: 10px 12px; font-size: 13.5px; line-height: 1.5; box-shadow: var(--shadow); min-width: 170px;
+    font-variant-numeric: tabular-nums; z-index: 5;
+  }
+  .tip b { color: var(--ink); display: block; margin-bottom: 4px; }
+  .tip div { display: flex; justify-content: space-between; gap: 14px; }
+  .tip i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; margin-right: 6px; }
+  .res-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 18px; align-items: stretch; }
+  .res-grid .tabs { justify-content: flex-start; margin: 0 0 10px; }
+  .note { color: var(--muted); font-size: 14.5px; margin: 8px 2px 0; }
+
+  /* compare sliders */
+  .cmp-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .cmp-card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 8px; }
+  .cmp { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 12px; background: #000; touch-action: pan-y; }
+  .cmp img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+  .cmp .fg { clip-path: inset(0 50% 0 0); }
+  .cmp .div { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: #fff; transform: translateX(-50%); pointer-events: none; }
+  .cmp .div::after {
+    content: "\2194"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 32px; height: 32px;
+    border-radius: 50%; background: #fff; color: #0a1317; display: grid; place-items: center; font-size: 15px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+  }
+  .cmp input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: ew-resize; }
+  .cmp-lab { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--muted); padding: 6px 4px 0; }
+  .cmp-cap { padding: 4px 4px 4px; font-size: 14.5px; color: var(--text-2); }
+  .cmp-cap b { color: var(--ink); font-weight: 600; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: 1px; }
+
+  /* bibtex */
+  .bib { position: relative; }
+  .end-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+  .bib pre {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px; margin: 0;
+    overflow-x: auto; font-family: var(--mono); font-size: 14.5px; line-height: 1.7; color: var(--text);
+  }
+  .copy {
+    position: absolute; top: 12px; right: 12px; font: inherit; font-size: 14px; font-weight: 600; padding: 6px 14px;
+    border-radius: 999px; background: var(--card); color: var(--ink); border: 1px solid var(--line-strong); cursor: pointer;
+  }
+  footer { padding-block: 36px 48px; color: var(--muted); font-size: 14.5px; text-align: center; border-top: 1px solid var(--line); }
+
+  @media (max-width: 1100px) {
+    .split, .loop-row, .end-grid, .res-grid { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 960px) {
+    .cmp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .res-grid { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 560px) {
+    body { font-size: 16px; }
+    .section { padding-block: 52px; }
+    .hl-grid, .cmp-grid { grid-template-columns: minmax(0, 1fr); }
+    .tldr { font-size: 17px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .btn { transition: none; }
+  }
+</style>
+<meta property="og:title" content="Preference-Guided Adaptation for Open-Vocabulary Semantic Segmentation via Prompt Disagreement">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://blue-531.github.io/pref-ovss/">
+<meta property="og:image" content="https://blue-531.github.io/pref-ovss/static/images/poster.jpg">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <div class="venue">NeurIPS 2026</div>
+    <h1 class="title"><span class="hl">Preference-Guided Adaptation</span> for Open-Vocabulary Semantic Segmentation via Prompt Disagreement</h1>
+    <div class="authors"><a href="https://blue-531.github.io/">Hyun-Kurl Jang</a><a href="https://jihun1998.github.io/">Jihun Kim</a><span>Kuk-Jin Yoon</span></div>
+    <div class="affil">KAIST</div>
+    <nav class="links" aria-label="Paper links">
+      <!-- TODO(paper): replace this span with <a class="btn" href="PAPER_URL"> once the paper is online -->
+      <span class="btn disabled" aria-disabled="true" title="Coming soon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/></svg>
+        Paper <small>(coming soon)</small>
+      </span>
+      <a class="btn" href="https://github.com/blue-531/pref-ovss">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg>
+        Code
+      </a>
+      <!-- the video loads only on click; swap the href for a YouTube link if you upload it there -->
+      <a class="btn ghost" href="static/videos/promo.mp4" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+        Video
+      </a>
+      <a class="btn ghost" href="#bibtex">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4c-2 0-3 1-3 3v2c0 1.5-1 2.5-2 3 1 .5 2 1.5 2 3v2c0 2 1 3 3 3M16 4c2 0 3 1 3 3v2c0 1.5 1 2.5 2 3-1 .5-2 1.5-2 3v2c0 2-1 3-3 3"/></svg>
+        BibTeX
+      </a>
+    </nav>
+    <p class="tldr">We adapt open-vocabulary segmentation models to specialized domains from <strong>binary A/B preferences</strong> instead of pixel masks. The candidates to compare come for free: different prompt templates already disagree.</p>
+    <div class="domains" aria-label="Target domains">
+      <span class="dchip"><i style="background: var(--d-med)"></i>Medical</span>
+      <span class="dchip"><i style="background: var(--d-earth)"></i>Earth monitoring</span>
+      <span class="dchip"><i style="background: var(--d-eng)"></i>Engineering</span>
+      <span class="dchip"><i style="background: var(--d-bio)"></i>Biology</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="section" aria-labelledby="ab-h">
+    <div class="wrap split">
+      <div class="abstract">
+        <h2 id="ab-h">Abstract</h2>
+        <p>Open-vocabulary semantic segmentation (OVSS) enables pixel-level prediction over arbitrary text-specified vocabularies and has shown strong generalization on common benchmarks. However, OVSS performance often degrades in specialized domains such as medical imaging, remote sensing, and industrial inspection, where dense pixel-level masks for adaptation are costly to obtain and require domain-specific expertise. We propose a preference-guided adaptation framework that replaces dense mask supervision with binary preferences. We observe that different prompt templates produce systematically different segmentations for the same image, a phenomenon we call <em>prompt disagreement</em>, and we repurpose it as a built-in source of preference supervision. Building on this, we mine localized preference queries from regions of high cross-template uncertainty, and adapt the OVSS model with Region-Localized Preference Optimization (RLPO) together with consistency regularization that stabilizes updates outside the queried region. Across extensive experiments on the MESS benchmark, the proposed method achieves consistent gains across diverse OVSS backbones without any pixel-level annotation, and remains effective under noisy preferences.</p>
+      </div>
+      <div class="hl-grid">
+        <article class="hl-card">
+          <div class="hl-top">Supervision</div>
+          <h3>Binary preferences, no masks</h3>
+          <p>An annotator only picks which of two candidate masks better matches the intended class inside one small region.</p>
+        </article>
+        <article class="hl-card">
+          <div class="hl-top">Candidates</div>
+          <h3>Prompt disagreement</h3>
+          <p>The 14 prompt templates of the OVSS model already produce different masks. Where they disagree most, we ask.</p>
+        </article>
+        <article class="hl-card">
+          <div class="hl-top">Objective</div>
+          <h3>RLPO + consistency</h3>
+          <p>A DPO-style loss on class-balanced region scores inside the query box, plus a consistency term that keeps the rest of the image stable.</p>
+        </article>
+        <article class="hl-card">
+          <div class="hl-top">Result on MESS</div>
+          <div class="hl-big">+10.6</div>
+          <p>mean mIoU over zero-shot for CAT-Seg ViT-L/14, with gains on all four SAN and CAT-Seg backbones.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section soft" aria-labelledby="pd-h">
+    <div class="wrap">
+      <div class="section-head left">
+        <span class="pill">Key observation</span>
+        <h2 id="pd-h">Different prompts, different masks</h2>
+        <p class="intro">Zero-shot CAT-Seg ViT-L/14. Each row is one training image and one class; only the prompt template changes. The framed pair (A, B) is the query our method asks about, chosen inside the box where the 14 prompts disagree most (right).</p>
+      </div>
+      <div class="pd-scroll"><div class="pd-grid" id="pd-grid" role="table" aria-label="Predictions per prompt template"></div></div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="m-h">
+    <div class="wrap">
+      <div class="section-head left">
+        <span class="pill">Method</span>
+        <h2 id="m-h">From prompt disagreement to a preference update</h2>
+        <p class="intro">Training images arrive one at a time. For each image we mine one localized query, collect one binary answer, and update lightweight adapters on the vision and text branches.</p>
+      </div>
+      <div class="split center">
+      <figure class="figure" style="margin: 0">
+        <img src="static/images/fig2_method.png" alt="Method overview: preference query mining, binary preference within the region, RLPO and consistency regularization" width="1601" height="722" loading="lazy">
+        <figcaption class="figcap">Overview (paper Fig. 2).</figcaption>
+      </figure>
+      <ol class="steps">
+        <li>
+          <h3>Mine a query</h3>
+          <p>Run all K = 14 prompt templates. The query region R is the box around the largest region where the cross-prompt entropy is in its top 5%. Inside R, pick the template pair whose masks disagree on the most pixels.</p>
+        </li>
+        <li>
+          <h3>Ask one question</h3>
+          <p>Which of the two predictions better matches the intended class inside R? In our experiments an oracle answers by comparing each prediction to the ground truth inside R only.</p>
+        </li>
+        <li>
+          <h3>Update the model</h3>
+          <p>RLPO raises the winner's class-balanced log-likelihood in R relative to the loser's. A Lovász consistency loss pulls the loser towards the winner's confident predictions outside R.</p>
+        </li>
+      </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="section soft" aria-labelledby="loop-h">
+    <div class="wrap loop-row">
+      <div class="section-head left">
+        <span class="pill">Any domain</span>
+        <h2 id="loop-h">The same loop in every target domain</h2>
+        <p class="intro">Each domain streams up to 64 training images and asks at most one A/B question per image. The held-out test prediction and test mIoU improve as the answers arrive.</p>
+        <p class="note">Replay of single adaptation runs, CAT-Seg ViT-L/14. iSAID is scored on a fixed 200-image evaluation subset.</p>
+      </div>
+      <video class="loop-video" autoplay muted loop playsinline preload="metadata" poster="static/images/any_domain_poster.jpg" aria-label="Adaptation in four domains: A/B answers, test prediction and test mIoU">
+        <source src="static/videos/any_domain.mp4" type="video/mp4">
+      </video>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="r-h">
+    <div class="wrap">
+      <div class="section-head left">
+        <span class="pill">Results</span>
+        <h2 id="r-h">Consistent gains on MESS, without pixel labels</h2>
+        <p class="intro">mIoU (%) per MESS domain group, 64 adaptation images per dataset, mean of 3 runs. <em>Supervised</em> uses ground-truth masks under the same streaming protocol.</p>
+      </div>
+      <div class="res-grid">
+      <div class="chart-card">
+        <div class="tabs" role="tablist" aria-label="Backbone" id="bb-tabs"></div>
+        <div class="chart-head">
+          <h3 id="bar-title">CAT-Seg ViT-L/14</h3>
+          <div class="legend">
+            <span><i style="background: var(--bar-zs)"></i>Zero-shot</span>
+            <span><i style="background: var(--bar-ours)"></i>+ Ours (preferences)</span>
+            <span><i style="background: var(--bar-sup)"></i>+ Supervised (masks)</span>
+          </div>
+        </div>
+        <div class="chart" id="bar-chart"></div>
+      </div>
+        <div class="chart-card">
+          <div class="chart-head">
+            <h3>Sample efficiency</h3>
+            <div class="legend" id="line-legend"></div>
+          </div>
+          <div class="chart" id="line-chart"></div>
+          <p class="note">CAT-Seg ViT-L/14, mIoU vs. number of adaptation images per dataset (0 = zero-shot).</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section soft" aria-labelledby="qual-h">
+    <div class="wrap">
+      <div class="section-head left">
+        <span class="pill">Qualitative results</span>
+        <h2 id="qual-h">Zero-shot vs. adapted, on held-out test images</h2>
+        <p class="intro">Drag the slider. Left: zero-shot CAT-Seg ViT-L/14. Right: after adaptation from binary preferences.</p>
+      </div>
+      <div class="cmp-grid" id="cmp-grid"></div>
+    </div>
+  </section>
+
+  <section class="section" id="bibtex" aria-labelledby="bib-h">
+    <div class="wrap">
+      <div class="section-head left"><h2 id="bib-h">BibTeX</h2></div>
+      <div class="bib">
+        <button class="copy" id="copy-bib" type="button">Copy</button>
+<pre id="bib-text">@inproceedings{jang2026preference,
+  title     = {Preference-Guided Adaptation for Open-Vocabulary
+               Semantic Segmentation via Prompt Disagreement},
+  author    = {Jang, Hyun-Kurl and Kim, Jihun and Yoon, Kuk-Jin},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2026}
+}</pre>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">Built on <a href="https://github.com/cvlab-kaist/CAT-Seg">CAT-Seg</a>, <a href="https://github.com/MendelXu/SAN">SAN</a> and the <a href="https://github.com/blumenstiel/MESS">MESS</a> benchmark.</div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  const $ = (s, r) => (r || document).querySelector(s);
+
+  /* ── prompt disagreement grid ───────────────────────────────────── */
+  const VILD = ["a photo of a {}.", "This is a photo of a {}.", "There is a {} in the scene.",
+    "There is the {} in the scene.", "a photo of a {} in the scene.", "a photo of a small {}.",
+    "a photo of a medium {}.", "a photo of a large {}.", "This is a photo of a small {}.",
+    "This is a photo of a medium {}.", "This is a photo of a large {}.", "There is a small {} in the scene.",
+    "There is a medium {} in the scene.", "There is a large {} in the scene."];
+  // one training image per domain; [template, % of pixels predicted as the class (unused on the page), query role]
+  const SAMPLES = [
+    { domain: "Medical", dir: "paxray_lungs_5", cls: "lung", color: "#00c2e0", gt: "17%",
+      items: [[0, 0, "A"], [5, 27], [9, 49], [2, 88, "B"]] },
+    { domain: "Earth monitoring", dir: "isaid_12", cls: "traffic circle", color: "#ffab00", gt: "under 1%",
+      items: [[0, 0, "A"], [9, 4], [3, 67], [2, 95, "B"]] },
+    { domain: "Engineering", dir: "deepcrack_17", cls: "crack", color: "#ff3d7f", gt: "3%",
+      items: [[8, 6, "B"], [5, 16], [0, 64], [6, 100, "A"]] },
+    { domain: "Biology", dir: "suim_9", cls: "reefs and invertebrates", color: "#ff8b00", gt: "45%",
+      items: [[4, 4], [0, 26, "A"], [5, 43], [2, 100, "B"]] }
+  ];
+  const pd = $("#pd-grid");
+  let html = '<div class="pd-colhead" role="columnheader">Image · class</div>' +
+    ["Prompt 1", "Prompt 2", "Prompt 3", "Prompt 4"].map((h) => `<div class="pd-colhead" role="columnheader">${h}</div>`).join("") +
+    '<div class="pd-colhead" role="columnheader">Cross-prompt entropy</div>';
+  SAMPLES.forEach((smp) => {
+    html += `<div class="pd-row" role="rowheader"><b>${smp.domain}</b><span>“${smp.cls}”</span></div>`;
+    smp.items.forEach(([k, cov, cand]) => {
+      const t = VILD[k].replace("{}", smp.cls);
+      html += `<figure class="pd-cell" role="cell"><div class="pd-img${cand ? " cand" : ""}">` +
+        `<img src="static/images/prompts/${smp.dir}/t${k}.jpg" alt="${smp.domain}, prediction for the prompt “${t}”" width="300" height="300" loading="lazy">` +
+        (cand ? `<span class="pd-badge">${cand}</span>` : "") + `</div>` +
+        `<figcaption class="pd-cap">“${t}”</figcaption></figure>`;
+    });
+    html += `<figure class="pd-cell" role="cell"><div class="pd-img"><img src="static/images/prompts/${smp.dir}/entropy.jpg" alt="${smp.domain}: cross-prompt entropy with the query box" width="300" height="300" loading="lazy"></div>` +
+      `</figure>`;
+  });
+  pd.innerHTML = html;
+
+  /* ── charts ──────────────────────────────────────────────────────── */
+  const GROUPS = ["General", "Earth monitoring", "Medical", "Engineering", "Agriculture & biology", "Mean"];
+  const T1 = {   // camera-ready Table 1: zero-shot, ours (+std), supervised (+std)
+    "SAN-B":     { name: "SAN ViT-B/16",     zs: [21.60, 26.90, 33.51, 28.19, 15.99, 25.29],
+      ours: [22.09, 27.69, 52.97, 33.47, 30.36, 32.39], os: [0.18, 0.60, 1.04, 0.21, 0.23, 0.09],
+      sup: [24.74, 28.59, 44.37, 35.64, 31.48, 32.41], ss: [0.33, 0.44, 0.60, 0.72, 2.95, 0.46] },
+    "CAT-Seg-B": { name: "CAT-Seg ViT-B/16", zs: [34.51, 34.52, 37.82, 29.95, 28.95, 33.12],
+      ours: [36.06, 35.88, 52.66, 43.82, 31.04, 39.67], os: [1.85, 0.60, 2.48, 2.16, 0.46, 0.08],
+      sup: [38.69, 38.22, 60.08, 46.01, 41.61, 44.26], ss: [0.13, 0.35, 1.37, 1.37, 0.87, 0.49] },
+    "SAN-L":     { name: "SAN ViT-L/14",     zs: [26.23, 34.51, 32.00, 24.15, 19.24, 27.40],
+      ours: [27.43, 37.09, 38.62, 36.13, 31.15, 33.99], os: [0.37, 0.78, 2.69, 0.35, 3.41, 0.90],
+      sup: [31.18, 35.74, 50.05, 38.03, 35.86, 37.64], ss: [0.31, 0.73, 1.30, 0.26, 0.64, 0.15] },
+    "CAT-Seg-L": { name: "CAT-Seg ViT-L/14", zs: [39.36, 35.64, 29.52, 34.22, 36.41, 35.26],
+      ours: [42.48, 40.28, 51.83, 52.68, 42.86, 45.88], os: [0.35, 0.35, 0.81, 0.41, 1.45, 0.38],
+      sup: [44.04, 41.82, 55.48, 49.18, 44.48, 46.67], ss: [0.41, 1.69, 1.98, 0.69, 0.78, 0.74] }
+  };
+  const SERIES = [
+    { key: "zs", label: "Zero-shot", color: "--bar-zs" },
+    { key: "ours", label: "+ Ours", color: "--bar-ours", std: "os" },
+    { key: "sup", label: "+ Supervised", color: "--bar-sup", std: "ss" }
+  ];
+  let backbone = "CAT-Seg-L";
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (tag, attrs, parent) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  };
+  const tipOf = (box) => {
+    let t = box.querySelector(".tip");
+    if (!t) { t = document.createElement("div"); t.className = "tip"; t.hidden = true; box.appendChild(t); }
+    return t;
+  };
+  function placeTip(box, tip, x, y) {
+    tip.hidden = false;
+    const bw = box.clientWidth, tw = tip.offsetWidth;
+    tip.style.left = Math.max(0, Math.min(bw - tw, x + 14)) + "px";
+    tip.style.top = Math.max(0, y - tip.offsetHeight - 10) + "px";
+  }
+  function barPath(x, y, w, h, r) {  // rounded top, square base
+    r = Math.min(r, w / 2, h);
+    return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+  }
+
+  function drawBars() {
+    const box = $("#bar-chart");
+    const d = T1[backbone];
+    $("#bar-title").textContent = d.name;
+    box.querySelectorAll("svg").forEach((s) => s.remove());
+    const W = box.clientWidth, narrow = W < 520;
+    const H = narrow ? 320 : 380, m = { l: 40, r: 8, t: 30, b: narrow ? 58 : 50 };
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img",
+      "aria-label": `Grouped bar chart of mIoU for ${d.name}` });
+    box.prepend(svg);
+    const pw = W - m.l - m.r, ph = H - m.t - m.b, ymax = 70;
+    const Y = (v) => m.t + ph - (v / ymax) * ph;
+    for (let v = 0; v <= ymax; v += 10) {
+      el("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), style: `stroke:var(${v ? "--grid" : "--line-strong"});stroke-width:1` }, svg);
+      const t = el("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end", "font-size": 12.5, style: "fill:var(--muted)" }, svg);
+      t.textContent = v;
+    }
+    const slot = pw / GROUPS.length;
+    const bw = Math.min(24, (slot - 16) / 3 - 2);
+    const tip = tipOf(box);
+    GROUPS.forEach((g, gi) => {
+      const cx = m.l + slot * (gi + 0.5);
+      const x0 = cx - (3 * bw + 4) / 2;
+      SERIES.forEach((s, si) => {
+        const v = d[s.key][gi];
+        el("path", { d: barPath(x0 + si * (bw + 2), Y(v), bw, Y(0) - Y(v), 4), style: `fill:var(${s.color})` }, svg);
+      });
+      const gain = d.ours[gi] - d.zs[gi];
+      const lt = el("text", { x: x0 + bw + 2 + bw / 2, y: Y(Math.max(d.ours[gi], d.sup[gi])) - 8, "text-anchor": "middle",
+        "font-size": narrow ? 11.5 : 13.5, "font-weight": 700, style: "fill:var(--ink)" }, svg);
+      lt.textContent = (gain >= 0 ? "+" : "") + gain.toFixed(1);
+      const words = narrow ? g.replace("Agriculture & biology", "Agri. & bio.").replace("Earth monitoring", "Earth").split(" ") : [g];
+      const lines = narrow ? (words.length > 1 && g !== "Mean" ? [words.slice(0, -1).join(" "), words.slice(-1)[0]] : [words.join(" ")]) : g.split(/ (?=monitoring|& biology)/);
+      lines.forEach((ln, li) => {
+        const t = el("text", { x: cx, y: H - m.b + 22 + li * 17, "text-anchor": "middle", "font-size": narrow ? 12 : 14,
+          "font-weight": g === "Mean" ? 700 : 500, style: "fill:var(--text)" }, svg);
+        t.textContent = ln;
+      });
+      const hit = el("rect", { x: cx - slot / 2, y: m.t, width: slot, height: ph + 6, fill: "transparent", tabindex: 0,
+        "aria-label": `${g}: zero-shot ${d.zs[gi]}, ours ${d.ours[gi]}, supervised ${d.sup[gi]}` }, svg);
+      const show = (ev) => {
+        tip.innerHTML = `<b>${g}</b>` + SERIES.map((s) =>
+          `<div><span><i style="background:var(${s.color})"></i>${s.label}</span><span>${d[s.key][gi].toFixed(2)}${s.std ? " ± " + d[s.std][gi].toFixed(2) : ""}</span></div>`).join("");
+        const r = box.getBoundingClientRect();
+        placeTip(box, tip, ev.clientX ? ev.clientX - r.left : cx, ev.clientY ? ev.clientY - r.top : Y(d.ours[gi]));
+      };
+      hit.addEventListener("mousemove", show);
+      hit.addEventListener("focus", show);
+      hit.addEventListener("mouseleave", () => (tip.hidden = true));
+      hit.addEventListener("blur", () => (tip.hidden = true));
+    });
+  }
+
+  const tabs = $("#bb-tabs");
+  Object.keys(T1).forEach((k) => {
+    const b = document.createElement("button");
+    b.className = "tab"; b.type = "button"; b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", k === backbone ? "true" : "false");
+    b.textContent = T1[k].name;
+    b.addEventListener("click", () => {
+      backbone = k;
+      tabs.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-selected", t === b ? "true" : "false"));
+      drawBars();
+    });
+    tabs.appendChild(b);
+  });
+
+  // paper Table 4 (CAT-Seg ViT-L/14)
+  const NIMG = [0, 4, 8, 16, 32, 64, 128];
+  const T4 = [
+    { g: "General", c: "--ln-1", v: [39.36, 39.57, 40.52, 40.85, 41.96, 42.48, 42.56] },
+    { g: "Earth monitoring", c: "--ln-2", v: [35.64, 38.22, 37.38, 39.50, 38.69, 40.28, 39.35] },
+    { g: "Medical", c: "--ln-3", v: [29.52, 41.03, 42.75, 46.30, 48.89, 51.83, 51.42] },
+    { g: "Engineering", c: "--ln-4", v: [34.22, 36.28, 39.19, 45.20, 50.57, 52.68, 54.13] },
+    { g: "Agriculture & biology", c: "--ln-5", v: [36.41, 36.42, 38.12, 40.16, 41.36, 42.86, 41.93] },
+    { g: "Mean", c: "--ln-mean", v: [35.26, 38.26, 39.50, 42.31, 44.20, 45.88, 45.79], bold: true }
+  ];
+  $("#line-legend").innerHTML = T4.map((s) => `<span><i class="line" style="background:var(${s.c})"></i>${s.g}</span>`).join("");
+  function drawLines() {
+    const box = $("#line-chart");
+    box.querySelectorAll("svg").forEach((s) => s.remove());
+    const W = box.clientWidth, H = 300, m = { l: 36, r: 14, t: 14, b: 34 };
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": "Line chart of mIoU versus number of adaptation images" });
+    box.prepend(svg);
+    const pw = W - m.l - m.r, ph = H - m.t - m.b, y0 = 25, y1 = 60;
+    const X = (i) => m.l + (i / (NIMG.length - 1)) * pw;
+    const Y = (v) => m.t + ph - ((v - y0) / (y1 - y0)) * ph;
+    for (let v = y0 + 5; v <= y1; v += 10) {
+      el("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), style: "stroke:var(--grid);stroke-width:1" }, svg);
+      const t = el("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end", "font-size": 12.5, style: "fill:var(--muted)" }, svg);
+      t.textContent = v;
+    }
+    NIMG.forEach((n, i) => {
+      const t = el("text", { x: X(i), y: H - 12, "text-anchor": "middle", "font-size": 12.5, style: "fill:var(--muted)" }, svg);
+      t.textContent = n;
+    });
+    const cross = el("line", { x1: 0, x2: 0, y1: m.t, y2: m.t + ph, style: "stroke:var(--line-strong);stroke-width:1", visibility: "hidden" }, svg);
+    T4.forEach((s) => {
+      el("polyline", { points: s.v.map((v, i) => `${X(i)},${Y(v)}`).join(" "), fill: "none",
+        style: `stroke:var(${s.c});stroke-width:${s.bold ? 3 : 2};stroke-linejoin:round;stroke-linecap:round` }, svg);
+      s.v.forEach((v, i) => el("circle", { cx: X(i), cy: Y(v), r: s.bold ? 4.5 : 4, style: `fill:var(${s.c});stroke:var(--card);stroke-width:2` }, svg));
+    });
+    const last = T4[T4.length - 1];
+    const lt = el("text", { x: X(NIMG.length - 1) - 6, y: Y(last.v[NIMG.length - 1]) - 12, "text-anchor": "end",
+      "font-size": 13, "font-weight": 700, style: "fill:var(--ink)" }, svg);
+    lt.textContent = "Mean " + last.v[5].toFixed(1) + " @ 64";
+    const tip = tipOf(box);
+    const hit = el("rect", { x: m.l - 10, y: m.t, width: pw + 20, height: ph, fill: "transparent" }, svg);
+    hit.addEventListener("mousemove", (ev) => {
+      const r = box.getBoundingClientRect();
+      const px = ev.clientX - r.left;
+      const i = Math.max(0, Math.min(NIMG.length - 1, Math.round(((px - m.l) / pw) * (NIMG.length - 1))));
+      cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i)); cross.setAttribute("visibility", "visible");
+      tip.innerHTML = `<b>${NIMG[i]} images</b>` + T4.map((s) =>
+        `<div><span><i style="background:var(${s.c})"></i>${s.g}</span><span>${s.v[i].toFixed(2)}</span></div>`).join("");
+      placeTip(box, tip, X(i), ev.clientY - r.top);
+    });
+    hit.addEventListener("mouseleave", () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
+  }
+
+  /* ── compare sliders ─────────────────────────────────────────────── */
+  const QUAL = [
+    // [dataset, test image, domain, colour token, classes in view]
+    ["paxray_lungs", 149, "Medical", "--d-med", "“lung”"], ["isaid", 96, "Earth monitoring", "--d-earth", "“air plane”"],
+    ["deepcrack", 29, "Engineering", "--d-eng", "“crack”"], ["suim", 40, "Biology", "--d-bio", "“fish and vertebrates”"]
+  ];
+  const grid = $("#cmp-grid");
+  QUAL.forEach(([ds, i, dom, col, target], n) => {
+    const card = document.createElement("figure");
+    card.className = "cmp-card";
+    card.style.margin = "0";
+    card.innerHTML =
+      `<div class="cmp"><img src="static/images/qual/${ds}_${i}_ours.jpg" alt="${dom}: after adaptation" loading="lazy">` +
+      `<img class="fg" src="static/images/qual/${ds}_${i}_zs.jpg" alt="${dom}: zero-shot" loading="lazy">` +
+      `<div class="div"></div><input type="range" min="0" max="100" value="50" id="cmp-${n}" aria-label="${dom} comparison slider"></div>` +
+      `<div class="cmp-lab"><span>Zero-shot</span><span>Ours</span></div>` +
+      `<figcaption class="cmp-cap"><span class="dot" style="background:var(${col})"></span><b>${dom}</b> · ${target}</figcaption>`;
+    grid.appendChild(card);
+    const inp = card.querySelector("input"), fg = card.querySelector(".fg"), dv = card.querySelector(".div");
+    const upd = () => { fg.style.clipPath = `inset(0 ${100 - inp.value}% 0 0)`; dv.style.left = inp.value + "%"; };
+    inp.addEventListener("input", upd); upd();
+  });
+
+  /* ── bibtex copy ─────────────────────────────────────────────────── */
+  $("#copy-bib").addEventListener("click", (e) => {
+    const txt = $("#bib-text").textContent, btn = e.currentTarget;
+    const done = () => { btn.textContent = "Copied"; setTimeout(() => (btn.textContent = "Copy"), 1500); };
+    const sel = () => { const r = document.createRange(); r.selectNodeContents($("#bib-text")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = "Selected"; };
+    try { navigator.clipboard.writeText(txt).then(done, sel); } catch (_) { sel(); }
+  });
+
+  const redraw = () => { drawBars(); drawLines(); };
+  redraw();
+  let rt;
+  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(redraw, 120); });
+})();
+</script>
+</body>
+</html>
