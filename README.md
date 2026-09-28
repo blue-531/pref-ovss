@@ -1,42 +1,52 @@
 # Preference-Guided Adaptation for Open-Vocabulary Semantic Segmentation via Prompt Disagreement
 
-**NeurIPS 2026**
+<p align="center">
+  <a href="https://blue-531.github.io/">Hyun-Kurl Jang</a>,
+  <a href="https://jihun1998.github.io/">Jihun Kim</a>,
+  Kuk-Jin Yoon
+  <br>
+  KAIST
+  <br>
+  <b>NeurIPS 2026</b>
+</p>
 
-[Hyun-Kurl Jang](https://blue-531.github.io/), [Jihun Kim](https://jihun1998.github.io/), Kuk-Jin Yoon
+<p align="center">
+  <a href="https://blue-531.github.io/pref-ovss/">Project Page</a> |
+  Paper (coming soon)
+</p>
 
-KAIST
+![teaser](assets/teaser.jpg)
 
-[Project page](https://blue-531.github.io/pref-ovss/) · Paper (coming soon)
 
-> [!NOTE]
-> **Code coming soon.** We are preparing the code release for this repository. Watch or star it to get notified.
+## 💥 News
 
-![Method overview](assets/method.png)
+- **[2026.09]** Our paper is accepted to **NeurIPS 2026** 🎉!
+- **[2026.09]** The [project page](https://blue-531.github.io/pref-ovss/) is online.
+- Code will be released soon. Stay tuned!
 
-## Overview
+
+## Introduction
 
 Open-vocabulary semantic segmentation (OVSS) models degrade in specialized domains such as medical
 imaging, remote sensing and industrial inspection, where dense pixel-level masks for adaptation are
-costly and require expert knowledge. We adapt OVSS models with **binary preferences** instead of masks.
+costly and require expert knowledge. We propose a **preference-guided adaptation** framework that
+replaces dense mask supervision with **binary preferences**. Different prompt templates produce
+systematically different segmentations of the same image, a phenomenon we call **prompt disagreement**,
+and we repurpose it as a built-in source of preference supervision. We mine a localized preference
+query from the region where the templates disagree most, and adapt the model with
+**R**egion-**L**ocalized **P**reference **O**ptimization (**RLPO**) together with a consistency
+regularizer that stabilizes the prediction outside the queried region. On the MESS benchmark, the
+method improves SAN and CAT-Seg (CLIP ViT-B/16 and ViT-L/14) without any pixel-level annotation,
+e.g. **+10.6 mIoU** on average for CAT-Seg ViT-L/14, and remains effective under noisy preferences.
 
-Different prompt templates produce systematically different segmentations of the same image, which we
-call *prompt disagreement*. We use it as a built-in source of preference supervision:
+![framework](assets/method.png)
 
-1. **Preference query mining.** Run the model with K = 14 prompt templates, localize the region where
-   the templates disagree most (cross-prompt entropy), and pick the template pair that disagrees most
-   inside it.
-2. **Region-Localized Preference Optimization (RLPO).** A single binary answer ("which prediction is
-   closer to the intended class in this region?") drives a DPO-style update on region-level scores.
-3. **Consistency regularization.** Keeps predictions outside the queried region stable.
 
-On the MESS benchmark the method improves SAN and CAT-Seg (CLIP ViT-B/16 and ViT-L/14) without any
-pixel-level annotation, e.g. +10.6 mean mIoU for CAT-Seg ViT-L/14, and remains effective under noisy
-preferences.
+## Code
 
-## Code release
+Coming soon: installation, MESS dataset preparation, and adaptation / evaluation scripts for the
+CAT-Seg and SAN backbones.
 
-The release will include adaptation code for the CAT-Seg and SAN backbones, the MESS dataset
-registry, and scripts to reproduce the main results.
 
 ## Citation
 
@@ -49,3 +59,9 @@ registry, and scripts to reproduce the main results.
   year      = {2026}
 }
 ```
+
+
+## Acknowledgement
+
+We thank [CAT-Seg](https://github.com/cvlab-kaist/CAT-Seg), [SAN](https://github.com/MendelXu/SAN)
+and [MESS](https://github.com/blumenstiel/MESS) for sharing their source code.
