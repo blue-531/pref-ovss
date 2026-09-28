@@ -15,7 +15,7 @@
   Paper (coming soon)
 </p>
 
-![teaser](assets/teaser.jpg)
+![teaser](assets/teaser.gif)
 
 
 ## 💥 News
