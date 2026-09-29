@@ -141,9 +141,6 @@
     border: 2px solid var(--btn); transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
   .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line-strong); }
-  .btn.disabled { opacity: 0.45; cursor: default; }
-  .btn.disabled:hover { transform: none; box-shadow: none; }
-  .btn small { font-size: 13px; font-weight: 500; }
   .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(10, 19, 23, 0.14); }
   .btn svg { width: 18px; height: 18px; flex: none; }
   .tldr { max-width: 780px; margin: 30px auto 0; font-size: 19px; color: var(--text-2); }
@@ -290,11 +287,10 @@
     <div class="authors"><a href="https://blue-531.github.io/">Hyun-Kurl Jang</a><a href="https://jihun1998.github.io/">Jihun Kim</a><span>Kuk-Jin Yoon</span></div>
     <div class="affil">KAIST</div>
     <nav class="links" aria-label="Paper links">
-      <!-- TODO(paper): replace this span with <a class="btn" href="PAPER_URL"> once the paper is online -->
-      <span class="btn disabled" aria-disabled="true" title="Coming soon">
+      <a class="btn" href="https://arxiv.org/abs/2609.34528">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/></svg>
-        Paper <small>(coming soon)</small>
-      </span>
+        Paper
+      </a>
       <a class="btn" href="https://github.com/blue-531/pref-ovss">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg>
         Code
@@ -455,11 +451,14 @@
       <div class="bib">
         <button class="copy" id="copy-bib" type="button">Copy</button>
 <pre id="bib-text">@inproceedings{jang2026preference,
-  title     = {Preference-Guided Adaptation for Open-Vocabulary
-               Semantic Segmentation via Prompt Disagreement},
-  author    = {Jang, Hyun-Kurl and Kim, Jihun and Yoon, Kuk-Jin},
-  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
-  year      = {2026}
+  title         = {Preference-Guided Adaptation for Open-Vocabulary
+                   Semantic Segmentation via Prompt Disagreement},
+  author        = {Jang, Hyun-Kurl and Kim, Jihun and Yoon, Kuk-Jin},
+  booktitle     = {Advances in Neural Information Processing Systems},
+  year          = {2026},
+  eprint        = {2609.34528},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CV}
 }</pre>
       </div>
     </div>
