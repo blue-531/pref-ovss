@@ -12,7 +12,7 @@
 
 <div align="center">
   
- [![arXiv](https://img.shields.io/badge/arXiv-2405.17427-red)](https://arxiv.org/abs/2410.15674)
+ [![arXiv](https://img.shields.io/badge/arXiv-2405.17427-red)](https://arxiv.org/abs/2609.34528)
 [![Project](https://img.shields.io/badge/project-page-green)](https://blue-531.github.io/pref-ovss/)
 
 </div>
