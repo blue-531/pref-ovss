@@ -12,7 +12,7 @@
 
 <div align="center">
   
- [![arXiv](https://img.shields.io/badge/arXiv-2405.17427-red)](https://arxiv.org/abs/2609.34528)
+ [![arXiv](https://img.shields.io/badge/arXiv-2609.34528-red)](https://arxiv.org/abs/2609.34528)
 [![Project](https://img.shields.io/badge/project-page-green)](https://blue-531.github.io/pref-ovss/)
 
 </div>
@@ -23,6 +23,7 @@
 ## 💥 News
 
 - **[2026.09]** Our paper is accepted to **NeurIPS 2026** 🎉!
+- **[2026.09]** The [paper](https://arxiv.org/abs/2609.34528) is released on arXiv.
 - **[2026.09]** The [project page](https://blue-531.github.io/pref-ovss/) is online.
 - Code will be released soon. Stay tuned!
 
@@ -47,7 +48,18 @@ TBD
 
 ## Citation
 
-TBD
+```bibtex
+@inproceedings{jang2026preference,
+  title         = {Preference-Guided Adaptation for Open-Vocabulary
+                   Semantic Segmentation via Prompt Disagreement},
+  author        = {Jang, Hyun-Kurl and Kim, Jihun and Yoon, Kuk-Jin},
+  booktitle     = {Advances in Neural Information Processing Systems},
+  year          = {2026},
+  eprint        = {2609.34528},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CV}
+}
+```
 
 
 ## Acknowledgement
